@@ -12,7 +12,6 @@ namespace Game
 	[CreateAssetMenu(menuName = "Game/Config/Game Config", order = -200)]
 	public class GameConfig : ScriptableObject
 	{
-		public CombatConfig   Combat;
 		public SceneListAsset MainMenu;
 		public Stage[]        Stages;
 	}

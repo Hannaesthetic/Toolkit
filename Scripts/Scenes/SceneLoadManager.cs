@@ -8,28 +8,49 @@ namespace Game
 {
 	public class SceneLoadManager : ManagerBase
 	{
-		private EState m_state;
+		#region Statics and Constants
+		private const string PLACEHOLDER_SCENE_NAME = "EMPTY_PLACEHOLDER";
+		#endregion
+
+		#region Enums
+		private enum EState
+		{
+			Idle,
+			AwaitingStart,
+			Unloading,
+			Loading
+		}
+		#endregion
+
+		#region Fields
+		private readonly List<AsyncOperation> m_asyncOperations = new();
+		private          EState               m_state;
 
 		private ISceneList m_currentSceneList;
+		#endregion
 
+		#region Delegates
 		public event Action<ISceneList> Evt_PreScenesUnloaded;
 		public event Action<ISceneList> Evt_ScenesLoaded;
-		
+		#endregion
+
+		#region Public Methods
 		public SceneLoadToken LoadScenes(ISceneList scenes)
 		{
 			if (m_state != EState.Idle)
 			{
-				Logging.Error($"Scenelist {scenes} attempted to load while another scene load was ongoing, cancelling", ELogCategory.Scenes);
+				Logging.Error($"Scenelist {scenes} attempted to load while another scene load was ongoing, cancelling",
+					ELogCategory.Scenes);
 				return null;
 			}
 
-			SceneLoadToken token = new SceneLoadToken();
+			SceneLoadToken token = new();
 			StartCoroutine(c_LoadScenes(scenes, token));
 			return token;
 		}
+		#endregion
 
-		private List<AsyncOperation> m_asyncOperations = new List<AsyncOperation>(); 
-		
+		#region Private Methods
 		private IEnumerator c_LoadScenes(ISceneList sceneList, SceneLoadToken token)
 		{
 			// let everything else finish, to avoid weird edge cases
@@ -38,10 +59,10 @@ namespace Game
 
 			Evt_PreScenesUnloaded?.Invoke(m_currentSceneList);
 			m_currentSceneList = null;
-			
+
 			// unload all existing scenes
 			SetState(EState.Unloading);
-			
+
 
 			// count all the scenes to unload
 			string[] scenesToLoad              = sceneList.GetRequiredScenes();
@@ -51,13 +72,13 @@ namespace Game
 			int      progress                  = 0;
 
 			token.progressTotal = sceneUnloadsAndLoadsTotal;
-			
+
 			void UpdateProgress()
 			{
 				token.progress = progress;
 				SetProgress(progress, sceneUnloadsAndLoadsTotal);
 			}
-			
+
 			// runs through all the async operations, to see if they're all done
 			void CheckAllAsyncOperations()
 			{
@@ -73,9 +94,9 @@ namespace Game
 					UpdateProgress();
 				}
 			}
-			
+
 			// empty scene - used to unload all scenes async, reload new scenes, & remove temp scene
-			Scene placeholderScene = SceneManager.CreateScene( "temp_placeholder" );
+			Scene placeholderScene = SceneManager.CreateScene(PLACEHOLDER_SCENE_NAME);
 
 			// request to unload them
 			m_asyncOperations.Clear();
@@ -86,6 +107,7 @@ namespace Game
 				{
 					continue;
 				}
+
 				m_asyncOperations.Add(SceneManager.UnloadSceneAsync(sceneToUnload));
 			}
 
@@ -101,20 +123,20 @@ namespace Game
 				{
 					break;
 				}
- 			}
+			}
 
 			Debug.Assert(progress == scenesToUnloadCount);
 			UpdateProgress();
-			
+
 			// load the scenes
 			SetState(EState.Loading);
-			
+
 			for (int i = 0; i < scenesToLoadCount; i++)
 			{
 				string sceneNameToLoad = scenesToLoad[i];
 				m_asyncOperations.Add(SceneManager.LoadSceneAsync(sceneNameToLoad));
 			}
-			
+
 			// wait for them all to load
 			while (true)
 			{
@@ -128,13 +150,7 @@ namespace Game
 					break;
 				}
 			}
-			
-			// AsyncOperation unloadPlaceholderScene = SceneManager.UnloadSceneAsync( placeholderScene, UnloadSceneOptions.UnloadAllEmbeddedSceneObjects );
-			// while (!unloadPlaceholderScene.isDone)
-			// {
-			// 	yield return null;
-			// }
-			
+
 			// announce that you're done
 			m_currentSceneList = sceneList;
 			SetState(EState.Idle);
@@ -143,9 +159,7 @@ namespace Game
 		}
 
 		private void SetProgress(int progress, int totalNeeded)
-		{
-			
-		}
+		{ }
 
 		private void SetState(EState state)
 		{
@@ -156,27 +170,27 @@ namespace Game
 
 			m_state = state;
 		}
+		#endregion
 
+		// use this for loading bars
 		public class SceneLoadToken
 		{
+			#region Fields
 			public int  progress;
 			public int  progressTotal;
 			public bool finished;
+			#endregion
 
+			#region Delegates
 			public event Action Evt_OnComplete;
+			#endregion
 
+			#region Public Methods
 			public void Complete()
 			{
 				Evt_OnComplete?.Invoke();
 			}
-		}
-
-		private enum EState
-		{
-			Idle,
-			AwaitingStart,
-			Unloading,
-			Loading,
+			#endregion
 		}
 	}
 }

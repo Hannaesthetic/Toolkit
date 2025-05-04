@@ -83,10 +83,8 @@ namespace Game
 	public enum ELogCategory
 	{
 		Default,
-		Microgame,
-		Animation,
-		Scenes,
 		Editor,
-		Camera,
+		Scenes,
+		// Add more values here to let you filter out your logs
 	}
 }
